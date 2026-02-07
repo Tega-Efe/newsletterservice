@@ -1,0 +1,106 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Restless Society Newsletter</title>
+    <!-- Prevent iOS dark mode -->
+    <meta name="color-scheme" content="light only">
+    <meta name="supported-color-schemes" content="light">
+</head>
+<body style="margin:0;padding:0;background:#ffffff !important;color:#222;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;">
+        <tr>
+            <td align="center">
+                <table width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;border:8px solid; border-image: linear-gradient(90deg, rgba(252,130,31,0.5) 0%, rgba(255,170,85,0.5) 100%) 1; border-radius:0;overflow:hidden;">
+                    <tr>
+                        <td style="background:#ffffff !important;padding:0;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;">
+                                <tr>
+                                    <td style="padding:18px 0 0 18px;" valign="top" width="90">
+                                        <a href="https://chat.whatsapp.com/ImBpjBZwx7zHrkmElfzIBH" target="_blank">
+                                            <img src="{{ qr_code_image }}" alt="QR Code" width="60" height="60" style="display:block;box-shadow:0 0 16px 8px #fff;">
+                                        </a>
+                                    </td>
+                                    
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#ffffff !important;padding:30px 25px;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="center" style="font-size:24px;font-weight:bold;color:#fc821f;font-family:Arial,sans-serif;background:#ffffff !important;">
+                                        <img src="{{ icon2_image }}" alt="Restless Society Icon" width="110" height="110" style="display:block;margin:0 auto;margin-bottom:5px;margin-top:-2rem;">
+                                        {{ newsletter_title }}
+                                        <div style="height:18px;"></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:16px;color:#222;font-family:Arial,sans-serif;padding-bottom:18px;font-weight:bold;text-align:center;background:#ffffff !important;">{{ newsletter_content }}
+                                        <div style="height:18px;"></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding-bottom:28px;background:#ffffff !important;">
+                                        {% if flyer_image %}
+                                        <img src="{{ flyer_image }}" alt="Flyer" style="display:block;margin:0 auto;max-width:420px;width:100%;height:auto;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.10);">
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if highlight_text %}
+                                <tr>
+                                    <td style="background:linear-gradient(135deg,rgba(252,130,31,0.15) 0%,rgba(252,130,31,0.03) 100%);border-left:4px solid #fc821f;padding:18px 18px 18px 22px;margin:28px 0 18px 0;border-radius:0 12px 12px 0;box-shadow:0 6px 24px 0 rgba(252,130,31,0.25);font-size:15px;color:#222;font-weight:bold;font-family:Arial,sans-serif;text-align:justify;background:#fff !important;">{{ highlight_text }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if cta_text and cta_url %}
+                                <tr>
+                                    <td align="center" style="padding:15px 0;background:#ffffff !important;">
+                                        <a href="{{ cta_url }}" style="display:inline-block;background:#fc821f;color:#fff;padding:12px 35px;border-radius:6px;font-weight:bold;font-size:15px;text-decoration:none;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;">{{ cta_text }}</a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="background:#fff !important;padding:25px 20px;text-align:center;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#fff !important;">
+                                <tr>
+                                    <td style="color:#fc821f;font-size:15px;font-weight:bold;font-family:Arial,sans-serif;padding-bottom:10px;">Visit our social accounts</td>
+                                </tr>
+                                <tr>
+                                    <td align="center" style="padding-bottom:10px;">
+                                        <a href="https://www.instagram.com/the.restless.society?igsh=MWR5ZTB4ajZ5cWZ2Ng%3D%3D&utm_source=qr" style="display:inline-block;margin:0 7px;">
+                                            <img src="{{ instagram_icon }}" alt="Instagram" width="40" height="40" style="display:inline-block;">
+                                        </a>
+                                        <a href="https://x.com/restlessociety?s=11" style="display:inline-block;margin:0 7px;">
+                                            <img src="{{ x_icon }}" alt="X" width="40" height="40" style="display:inline-block;">
+                                        </a>
+                                        <a href="https://www.tiktok.com/@restless.society?_r=1&_t=ZS-93cBFfyrScb" style="display:inline-block;margin:0 7px;">
+                                            <img src="{{ tiktok_icon }}" alt="TikTok" width="40" height="40" style="display:inline-block;">
+                                        </a>
+                                        <a href="https://chat.whatsapp.com/ImBpjBZwx7zHrkmElfzIBH" style="display:inline-block;margin:0 7px;">
+                                            <img src="{{ whatsapp_icon }}" alt="WhatsApp" width="40" height="40" style="display:inline-block;">
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:14px;color:#fc821f;font-style:italic;font-family:Arial,sans-serif;padding-bottom:8px;">"A gathering point for a shared rhythm."</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:13px;color:#222;font-family:Arial,sans-serif;font-weight:bold;padding-bottom:5px;">&copy; {{ year }} Restless Society. All rights reserved.</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size:12px;color:#fc821f;font-family:Arial,sans-serif;">Not interested? <a href="{{ unsubscribe_url }}" style="color:#fc821f;text-decoration:underline;font-weight:bold;">Unsubscribe</a></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
