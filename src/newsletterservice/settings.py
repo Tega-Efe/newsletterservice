@@ -122,16 +122,16 @@ USE_I18N = True
 
 USE_TZ = True
 
-#the email settings
+# New SendGrid config:
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST = 'smtp.sendgrid.net'
 EMAIL_PORT = 587
-EMAIL_USE_TLS = True 
-DEFAULT_FROM_EMAIL = "newsletterservice"
-EMAIL_HOST_USER = "therestlesssociety1@gmail.com"
-EMAIL_HOST_PASSWORD = "kslnyrfflqsvdwpt"
-
-
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'apikey'  # This is literal - SendGrid always uses 'apikey' as the username
+EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY', '')  # Store your API key in .env
+DEFAULT_FROM_EMAIL = '234kosi@restlesssociety.xyz'
+# Make the SendGrid API key available in settings (used by SendGrid client)
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
 
 
 # Static files (CSS, JavaScript, Images)

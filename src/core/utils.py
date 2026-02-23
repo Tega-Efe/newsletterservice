@@ -12,6 +12,14 @@ import json
 
 logger = logging.getLogger(__name__)
 
+# Optional SendGrid integration
+try:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail
+    SENDGRID_AVAILABLE = True
+except Exception:
+    SENDGRID_AVAILABLE = False
+
 
 def _get_image_url(key: str) -> str:
     """Return an image URL for `key` from settings.NEWSLETTER_IMAGES or
@@ -123,15 +131,24 @@ def createEmail(request, device_id):
     html_content = render_to_string(template_name, context)
     text_content = strip_tags(html_content)
 
-    # Send the email
-    email_message = EmailMultiAlternatives(
-        subject=email.subject,
-        body=text_content,
-        from_email=settings.EMAIL_HOST_USER,
-        to=[email.email]
-    )
-    email_message.attach_alternative(html_content, "text/html")
-    email_message.send()
+    # Send the email via SendGrid (required)
+    if not SENDGRID_AVAILABLE or not getattr(settings, 'SENDGRID_API_KEY', ''):
+        logger.error('SendGrid not configured: SENDGRID_API_KEY missing or sendgrid package not installed')
+        return Response({'error': 'SendGrid not configured on server'}, status=500)
+
+    try:
+        sg = SendGridAPIClient(getattr(settings, 'SENDGRID_API_KEY'))
+        msg = Mail(
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to_emails=email.email,
+            subject=email.subject,
+            html_content=text_content
+        )
+        response = sg.send(msg)
+        logger.info(f"SendGrid single-send response: status={getattr(response, 'status_code', None)}")
+    except Exception as e:
+        logger.exception('SendGrid single-send failed')
+        return Response({'error': 'Failed to send email via SendGrid'}, status=500)
 
     serializer = EmailSerializer(email, many=False)
     return Response(serializer.data)
@@ -186,9 +203,9 @@ def sendBroadcastEmail(request, device_id):
     subject = data['subject']
     message = data['message']
     recipients = data['recipients']
-    # Always use EMAIL_HOST_USER from settings, ignore Angular's senderEmail
-    sender_email = settings.EMAIL_HOST_USER
-    sender_name = data.get('senderName', settings.DEFAULT_FROM_EMAIL)
+    # Always use DEFAULT_FROM_EMAIL as the sender address (ignore any senderEmail provided)
+    sender_email = settings.DEFAULT_FROM_EMAIL
+    sender_name = data.get('senderName', '')
     broadcast_id = data.get('broadcastId', str(uuid.uuid4()))
     
     # Parse the message JSON to extract newsletter data
@@ -252,29 +269,28 @@ def sendBroadcastEmail(request, device_id):
         status='pending'
     )
 
-    # Send emails using a single connection
+    # Require SendGrid for all sending (no SMTP fallback)
     sent_count = 0
     failed_count = 0
     failed_emails = []
-    
-    connection = get_connection(
-        backend=settings.EMAIL_BACKEND,
-        host=settings.EMAIL_HOST,
-        port=settings.EMAIL_PORT,
-        username=settings.EMAIL_HOST_USER,
-        password=settings.EMAIL_HOST_PASSWORD,
-        use_tls=settings.EMAIL_USE_TLS
-    )
-    
-    try:
-        connection.open()
-    except Exception as conn_error:
+
+    # Log the default from email used for broadcasts
+    logger.info(f"Broadcasts will use DEFAULT_FROM_EMAIL={settings.DEFAULT_FROM_EMAIL}")
+
+    if not SENDGRID_AVAILABLE or not getattr(settings, 'SENDGRID_API_KEY', ''):
         broadcast_log.status = 'failed'
         broadcast_log.save()
-        return Response({
-            'status': 'error',
-            'message': f'Failed to connect to email server: {str(conn_error)}'
-        }, status=500)
+        logger.error('SendGrid not available or SENDGRID_API_KEY missing; broadcasts aborted')
+        return Response({'status': 'error', 'message': 'SendGrid not configured on server'}, status=500)
+
+    try:
+        sg_client = SendGridAPIClient(getattr(settings, 'SENDGRID_API_KEY'))
+        logger.info('SendGrid client initialized for broadcasts')
+    except Exception as e:
+        broadcast_log.status = 'failed'
+        broadcast_log.save()
+        logger.exception('Failed to initialize SendGrid client')
+        return Response({'status': 'error', 'message': 'Failed to initialize SendGrid client'}, status=500)
 
     # Load image URLs from settings (prefer NEWSLETTER_IMAGES dict)
     icon2_url = _get_image_url('icon2')
@@ -357,36 +373,30 @@ Year: {datetime.now().year}
             else:
                 from_email_formatted = sender_email
 
-            # Send email
+            # Send email via SendGrid or SMTP
+           
+            # Send via SendGrid
             try:
-                email_message = EmailMultiAlternatives(
+                msg = Mail(
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to_emails=recipient_email,
                     subject=subject,
-                    body=text_content,
-                    from_email=from_email_formatted,
-                    to=[recipient_email],
-                    connection=connection
-)
-                email_message.attach_alternative(html_content, "text/html")
-                
-                send_result = email_message.send()
-                
-                if send_result == 0:
-                    raise Exception(f"Email send returned 0 for {recipient_email}")
-                    
-            except Exception as send_error:
+                    html_content=html_content
+                )
+                response = sg_client.send(msg)
+                logger.info(f'SendGrid response: status={getattr(response, "status_code", None)}')
+                status_code = getattr(response, 'status_code', 0)
+                if status_code < 200 or status_code >= 300:
+                    raise Exception(f'SendGrid send failed, status={status_code}')
+                sent_count += 1
+            except Exception:
                 raise
-            
-            sent_count += 1
             
         except Exception as e:
             failed_count += 1
             failed_emails.append({'email': recipient_email, 'error': str(e)})
 
-    # Close SMTP connection
-    try:
-        connection.close()
-    except Exception:
-        pass
+    # No SMTP connection to close when using SendGrid
 
     # Save broadcast email once
     if sent_count > 0:
