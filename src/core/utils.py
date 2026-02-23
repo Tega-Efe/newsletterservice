@@ -6,13 +6,27 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from datetime import datetime
-from pathlib import Path
 import uuid
 import logging
 import json
-import base64
 
 logger = logging.getLogger(__name__)
+
+
+def _get_image_url(key: str) -> str:
+    """Return an image URL for `key` from settings.NEWSLETTER_IMAGES or
+    fall back to common settings names like KEY_ICON_URL or KEY_URL.
+    """
+    imgs = getattr(settings, 'NEWSLETTER_IMAGES', {}) or {}
+    if key in imgs and imgs[key]:
+        return imgs[key]
+    # Try common fallback attribute names
+    for suffix in ('_ICON_URL', '_URL'):
+        attr = f"{key.upper()}{suffix}"
+        val = getattr(settings, attr, '')
+        if val:
+            return val
+    return ''
 
 
 def getEmailList(request, device_id):
@@ -36,13 +50,8 @@ def getEmailDetail(request, pk, device_id):
 
 
 def createEmail(request, device_id):
-    # Flyer image (img.png)
-    flyer_data_uri = ''
-    flyer_path = images_dir / 'img5.png'
-    if flyer_path.exists():
-        with open(flyer_path, 'rb') as f:
-            flyer_base64 = base64.b64encode(f.read()).decode('utf-8')
-            flyer_data_uri = f'data:image/png;base64,{flyer_base64}'
+    # Flyer images: expect URLs from request
+    flyer_images = request.data.get('flyer_images', [])
     """
     Send newsletter emails for a ticketing platform.
     Supports two types:
@@ -75,58 +84,13 @@ def createEmail(request, device_id):
     else:
         template_name = 'newsletter-announcement.html'
     
-    # Convert images to base64 data URIs for embedding in template
-    images_dir = Path(settings.BASE_DIR) / 'core' / 'static' / 'images'
-    
-    icon2_data_uri = ''
-    icon2_path = images_dir / 'icon2.png'
-    if icon2_path.exists():
-        with open(icon2_path, 'rb') as f:
-            icon2_base64 = base64.b64encode(f.read()).decode('utf-8')
-            icon2_data_uri = f'data:image/png;base64,{icon2_base64}'
-    
-    qr_data_uri = ''
-    qr_path = images_dir / 'QRcode.jpg'
-    if qr_path.exists():
-        with open(qr_path, 'rb') as f:
-            qr_base64 = base64.b64encode(f.read()).decode('utf-8')
-            qr_data_uri = f'data:image/jpeg;base64,{qr_base64}'
-    
-    img5_data_uri = ''
-    img5_path = images_dir / 'img5.png'
-    if img5_path.exists():
-        with open(img5_path, 'rb') as f:
-            img5_base64 = base64.b64encode(f.read()).decode('utf-8')
-            img5_data_uri = f'data:image/png;base64,{img5_base64}'
-    
-    # Social media icons
-    instagram_icon_data_uri = ''
-    instagram_icon_path = images_dir / 'instagram.png'
-    if instagram_icon_path.exists():
-        with open(instagram_icon_path, 'rb') as f:
-            instagram_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            instagram_icon_data_uri = f'data:image/png;base64,{instagram_icon_base64}'
-
-    tiktok_icon_data_uri = ''
-    tiktok_icon_path = images_dir / 'tiktok.png'
-    if tiktok_icon_path.exists():
-        with open(tiktok_icon_path, 'rb') as f:
-            tiktok_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            tiktok_icon_data_uri = f'data:image/png;base64,{tiktok_icon_base64}'
-
-    x_icon_data_uri = ''
-    x_icon_path = images_dir / 'twitter.png'
-    if x_icon_path.exists():
-        with open(x_icon_path, 'rb') as f:
-            x_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            x_icon_data_uri = f'data:image/png;base64,{x_icon_base64}'
-
-    whatsapp_icon_data_uri = ''
-    whatsapp_icon_path = images_dir / 'whatsapp.png'
-    if whatsapp_icon_path.exists():
-        with open(whatsapp_icon_path, 'rb') as f:
-            whatsapp_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            whatsapp_icon_data_uri = f'data:image/png;base64,{whatsapp_icon_base64}'
+    # Load image URLs from settings (prefer NEWSLETTER_IMAGES dict)
+    icon2_url = _get_image_url('icon2')
+    qr_code_url = _get_image_url('qr_code')
+    instagram_icon_url = _get_image_url('instagram')
+    tiktok_icon_url = _get_image_url('tiktok')
+    x_icon_url = _get_image_url('twitter')
+    whatsapp_icon_url = _get_image_url('whatsapp')
 
     # Common context for both templates
     context = {
@@ -135,16 +99,15 @@ def createEmail(request, device_id):
         'highlight_text': data.get('highlight_text', ''),
         'cta_text': data.get('cta_text', ''),
         'cta_url': data.get('cta_url', ''),
-        'icon2_image': icon2_data_uri,
-        'qr_code_image': qr_data_uri,
-        'img5_image': img5_data_uri,
+        'icon2_image': icon2_url,
+        'qr_code_image': qr_code_url,
         'year': datetime.now().year,
         'unsubscribe_url': data.get('unsubscribe_url', '#'),
-        'instagram_icon': instagram_icon_data_uri,
-        'tiktok_icon': tiktok_icon_data_uri,
-        'x_icon': x_icon_data_uri,
-        'whatsapp_icon': whatsapp_icon_data_uri,
-        'flyer_image': flyer_data_uri,
+        'instagram_icon': instagram_icon_url,
+        'tiktok_icon': tiktok_icon_url,
+        'x_icon': x_icon_url,
+        'whatsapp_icon': whatsapp_icon_url,
+        'flyer_images': flyer_images,
     }
 
     # Add event-specific context if newsletter type is event
@@ -229,6 +192,10 @@ def sendBroadcastEmail(request, device_id):
     broadcast_id = data.get('broadcastId', str(uuid.uuid4()))
     
     # Parse the message JSON to extract newsletter data
+    # Initialize counters for subscriber creation/reactivation
+    new_subscribers = 0
+    updated_subscribers = 0
+
     try:
         newsletter_data = json.loads(message)
         template_type = newsletter_data.get('template', 'announcement')
@@ -240,6 +207,7 @@ def sendBroadcastEmail(request, device_id):
         event_date = newsletter_data.get('event_date', '')
         event_time = newsletter_data.get('event_time', '')
         event_location = newsletter_data.get('event_location', '')
+        flyer_images = newsletter_data.get('flyer_images', [])
     except json.JSONDecodeError:
         template_type = data.get('templateType', 'announcement')
         newsletter_title = subject
@@ -250,10 +218,9 @@ def sendBroadcastEmail(request, device_id):
         event_date = ''
         event_time = ''
         event_location = ''
+        flyer_images = []
 
-    # Auto-save/update subscribers from recipients list
-    new_subscribers = 0
-    updated_subscribers = 0
+    # Auto-save/update subscribers from recipients list (works for both branches)
     for recipient_email in recipients:
         try:
             subscriber, created = Subscriber.objects.get_or_create(
@@ -309,58 +276,16 @@ def sendBroadcastEmail(request, device_id):
             'message': f'Failed to connect to email server: {str(conn_error)}'
         }, status=500)
 
-    # Load and encode images ONCE (not per recipient) - PERFORMANCE OPTIMIZATION
-    images_dir = Path(settings.BASE_DIR) / 'core' / 'static' / 'images'
-
-    icon2_data_uri = ''
-    icon2_path = images_dir / 'icon2.png'
-    if icon2_path.exists():
-        with open(icon2_path, 'rb') as f:
-            icon2_base64 = base64.b64encode(f.read()).decode('utf-8')
-            icon2_data_uri = f'data:image/png;base64,{icon2_base64}'
-
-    qr_data_uri = ''
-    qr_path = images_dir / 'QRcode.jpg'
-    if qr_path.exists():
-        with open(qr_path, 'rb') as f:
-            qr_base64 = base64.b64encode(f.read()).decode('utf-8')
-            qr_data_uri = f'data:image/jpeg;base64,{qr_base64}'
-
-    img5_data_uri = ''
-    img5_path = images_dir / 'img5.png'
-    if img5_path.exists():
-        with open(img5_path, 'rb') as f:
-            img5_base64 = base64.b64encode(f.read()).decode('utf-8')
-            img5_data_uri = f'data:image/png;base64,{img5_base64}'
-
-    # Social media icons
-    instagram_icon_data_uri = ''
-    instagram_icon_path = images_dir / 'instagram.png'
-    if instagram_icon_path.exists():
-        with open(instagram_icon_path, 'rb') as f:
-            instagram_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            instagram_icon_data_uri = f'data:image/png;base64,{instagram_icon_base64}'
-
-    tiktok_icon_data_uri = ''
-    tiktok_icon_path = images_dir / 'tiktok.png'
-    if tiktok_icon_path.exists():
-        with open(tiktok_icon_path, 'rb') as f:
-            tiktok_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            tiktok_icon_data_uri = f'data:image/png;base64,{tiktok_icon_base64}'
-
-    x_icon_data_uri = ''
-    x_icon_path = images_dir / 'twitter.png'
-    if x_icon_path.exists():
-        with open(x_icon_path, 'rb') as f:
-            x_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            x_icon_data_uri = f'data:image/png;base64,{x_icon_base64}'
-
-    whatsapp_icon_data_uri = ''
-    whatsapp_icon_path = images_dir / 'whatsapp.png'
-    if whatsapp_icon_path.exists():
-        with open(whatsapp_icon_path, 'rb') as f:
-            whatsapp_icon_base64 = base64.b64encode(f.read()).decode('utf-8')
-            whatsapp_icon_data_uri = f'data:image/png;base64,{whatsapp_icon_base64}'
+    # Load image URLs from settings (prefer NEWSLETTER_IMAGES dict)
+    icon2_url = _get_image_url('icon2')
+    qr_code_url = _get_image_url('qr_code')
+    icon_url = _get_image_url('icon')
+    instagram_icon_url = _get_image_url('instagram')
+    tiktok_icon_url = _get_image_url('tiktok')
+    twitter_icon_url = _get_image_url('twitter')
+    whatsapp_icon_url = _get_image_url('whatsapp')
+    header_bg_url = _get_image_url('header_bg')
+    footer_bg_url = _get_image_url('footer_bg')
 
     for recipient_email in recipients:
         try:
@@ -376,14 +301,17 @@ def sendBroadcastEmail(request, device_id):
                 'cta_url': cta_url,
                 'year': datetime.now().year,
                 'unsubscribe_url': unsubscribe_url,
-                'icon2_image': icon2_data_uri,
-                'qr_code_image': qr_data_uri,
-                'img5_image': img5_data_uri,
-                'flyer_image': img5_data_uri,
-                'instagram_icon': instagram_icon_data_uri,
-                'tiktok_icon': tiktok_icon_data_uri,
-                'x_icon': x_icon_data_uri,
-                'whatsapp_icon': whatsapp_icon_data_uri,
+                # Firebase Storage URLs (no encoding!)
+                'icon2_image': icon2_url,
+                'qr_code_image': qr_code_url,
+                'icon_image': icon_url,
+                'background_header_image': header_bg_url,
+                'background_footer_image': footer_bg_url,
+                'flyer_images': flyer_images,  # Dynamic flyer images from admin upload
+                'instagram_icon': instagram_icon_url,
+                'tiktok_icon': tiktok_icon_url,
+                'x_icon': twitter_icon_url,
+                'whatsapp_icon': whatsapp_icon_url,
             }
             
             # Add event-specific fields if template type is 'event'

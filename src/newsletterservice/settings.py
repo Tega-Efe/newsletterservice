@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +30,7 @@ SECRET_KEY = 'django-insecure-drih5ul)03h%b6wtmzhtn)w3px_zeh$bls3cb5x#)y!ozgu&)z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.20.10.3' ,'newsletterservice.pythonanywhere.com' ]
+ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.20.10.3','192.168.0.101' ,'newsletterservice.pythonanywhere.com' ]
 
 
 
@@ -46,8 +50,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     "corsheaders.middleware.CorsMiddleware",
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -145,7 +149,15 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS Configuration for Angular Frontend
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+# Explicit allow-list for frontend origins (safer than blanket allow)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+    "https://restless-society.web.app",
+    "https://restlesssociety.xyz"
+]
+
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -154,6 +166,7 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -166,6 +179,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'x-device-id',
 ]
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Logging Configuration
@@ -204,4 +218,34 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# Main newsletter icons
+ICON2_URL = os.getenv('ICON2_URL', '')
+ICON_URL = os.getenv('ICON_URL', '')
+QR_CODE_URL = os.getenv('QR_CODE_URL', '')
+LOGO_URL = os.getenv('LOGO_URL', '')
+
+# Social media icons
+INSTAGRAM_ICON_URL = os.getenv('INSTAGRAM_ICON_URL', '')
+TIKTOK_ICON_URL = os.getenv('TIKTOK_ICON_URL', '')
+TWITTER_ICON_URL = os.getenv('TWITTER_ICON_URL', '')
+WHATSAPP_ICON_URL = os.getenv('WHATSAPP_ICON_URL', '')
+
+# Background images
+HEADER_BG_URL = os.getenv('HEADER_BG_URL', '')
+FOOTER_BG_URL = os.getenv('FOOTER_BG_URL', '')
+
+# Optional: Group all newsletter images in a dictionary for easy access
+NEWSLETTER_IMAGES = {
+    'icon2': ICON2_URL,
+    'icon': ICON_URL,
+    'qr_code': QR_CODE_URL,
+    'logo': LOGO_URL,
+    'instagram': INSTAGRAM_ICON_URL,
+    'tiktok': TIKTOK_ICON_URL,
+    'twitter': TWITTER_ICON_URL,
+    'whatsapp': WHATSAPP_ICON_URL,
+    'header_bg': HEADER_BG_URL,
+    'footer_bg': FOOTER_BG_URL,
 }

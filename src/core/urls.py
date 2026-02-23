@@ -8,7 +8,7 @@ urlpatterns = [
     path('emails/<str:pk>/', views.getEmail, name="email"),
     
     # Broadcast endpoint for sending to multiple recipients
-    path('broadcast/send', views.broadcastEmail, name="broadcast-send"),
+    path('broadcast/send/', views.broadcastEmail, name="broadcast-send"),
     
     # Subscriber endpoints
     path('subscribers/', views.subscribers, name="subscribers"),
