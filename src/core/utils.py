@@ -122,6 +122,7 @@ def createEmail(request, device_id):
     if newsletter_type == 'event':
         context.update({
             'event_title': data.get('event_title', data.get('newsletter_title', 'Special Event')),
+            'event_stub_title': data.get('subject', ''),
             'event_date': data.get('event_date', ''),
             'event_time': data.get('event_time', ''),
             'event_location': data.get('event_location', ''),
@@ -138,8 +139,9 @@ def createEmail(request, device_id):
 
     try:
         sg = SendGridAPIClient(getattr(settings, 'SENDGRID_API_KEY'))
+        from_email_formatted = f'Restless Society <{settings.DEFAULT_FROM_EMAIL}>'
         msg = Mail(
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=from_email_formatted,  # e.g. "Restless Society <info@restlesssociety.xyz>"
             to_emails=email.email,
             subject=email.subject,
             html_content=text_content
@@ -205,7 +207,7 @@ def sendBroadcastEmail(request, device_id):
     recipients = data['recipients']
     # Always use DEFAULT_FROM_EMAIL as the sender address (ignore any senderEmail provided)
     sender_email = settings.DEFAULT_FROM_EMAIL
-    sender_name = data.get('senderName', '')
+    sender_name = data.get('senderName', 'Restless Society')  # Brand display name sent from frontend
     broadcast_id = data.get('broadcastId', str(uuid.uuid4()))
     
     # Parse the message JSON to extract newsletter data
@@ -306,7 +308,7 @@ def sendBroadcastEmail(request, device_id):
     for recipient_email in recipients:
         try:
             # Generate unsubscribe URL for Angular frontend
-            unsubscribe_url = f'https://restless-society.web.app/unsubscribe?email={recipient_email}'
+            unsubscribe_url = f'https://restlesssociety.xyz/unsubscribe?email={recipient_email}'
 
             # Create context for template with parsed newsletter data
             context = {
@@ -334,6 +336,7 @@ def sendBroadcastEmail(request, device_id):
             if template_type == 'event':
                 context.update({
                     'event_title': newsletter_title,
+                    'event_stub_title': subject, 
                     'event_date': event_date,
                     'event_time': event_time,
                     'event_location': event_location,
@@ -378,7 +381,7 @@ Year: {datetime.now().year}
             # Send via SendGrid
             try:
                 msg = Mail(
-                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    from_email=from_email_formatted,  # e.g. "Restless Society <info@restlesssociety.xyz>"
                     to_emails=recipient_email,
                     subject=subject,
                     html_content=html_content

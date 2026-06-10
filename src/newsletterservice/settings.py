@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-drih5ul)03h%b6wtmzhtn)w3px_zeh$bls3cb5x#)y!ozgu&)z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.20.10.3','192.168.0.101' ,'newsletterservice.pythonanywhere.com' ]
+ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.20.10.4','192.168.0.100' ,'newsletterservice.pythonanywhere.com' ]
 
 
 
@@ -129,10 +129,18 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'apikey'  # This is literal - SendGrid always uses 'apikey' as the username
 EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY', '')  # Store your API key in .env
-DEFAULT_FROM_EMAIL = '234kosi@restlesssociety.xyz'
+DEFAULT_FROM_EMAIL = 'info@restlesssociety.xyz'
 # Make the SendGrid API key available in settings (used by SendGrid client)
 SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
 
+#the email settings
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True 
+# DEFAULT_FROM_EMAIL = "newsletterservice"
+# EMAIL_HOST_USER = "therestlesssociety1@gmail.com"
+# EMAIL_HOST_PASSWORD = "kslnyrfflqsvdwpt"
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
