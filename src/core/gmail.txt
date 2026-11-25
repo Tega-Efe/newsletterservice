@@ -4,13 +4,47 @@ from .serializers import EmailSerializer, SubscriberSerializer, BroadcastLogSeri
 from django.core.mail import send_mail, EmailMultiAlternatives, get_connection
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from django.utils.html import strip_tags, escape
 from datetime import datetime
 import uuid
 import logging
 import json
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def format_content_paragraphs(text: str) -> str:
+    """Convert plain text typed by an admin (with blank-line-separated
+    paragraphs) into safe HTML paragraphs, preserving the structure the
+    admin typed instead of collapsing it into one run-on block.
+
+    - Blocks separated by one or more blank lines become separate <p> tags.
+    - A single newline inside a block is treated as an intentional line
+      break and becomes <br>.
+    - All text is HTML-escaped first, so admin input can never inject
+      markup into the outgoing email.
+    """
+    if not text:
+        return ''
+
+    # Normalize line endings, then split into paragraph blocks on blank lines
+    normalized = text.replace('\r\n', '\n').replace('\r', '\n')
+    blocks = re.split(r'\n\s*\n', normalized.strip())
+
+    paragraphs = []
+    for block in blocks:
+        block = block.strip('\n')
+        if not block.strip():
+            continue
+        escaped = escape(block)
+        # Preserve single line breaks the admin typed within a paragraph
+        escaped = escaped.replace('\n', '<br>')
+        paragraphs.append(
+            '<p style="margin:0 0 16px 0;">{}</p>'.format(escaped)
+        )
+
+    return ''.join(paragraphs)
 
 
 def _get_image_url(key: str) -> str:
@@ -27,6 +61,16 @@ def _get_image_url(key: str) -> str:
         if val:
             return val
     return ''
+
+
+def get_sender_email() -> str:
+    """Return the bare "from" address for the active email provider
+    (see EMAIL_PROVIDER / EMAIL_FROM_ADDRESS in settings.py).
+
+    Don't use settings.EMAIL_HOST_USER for this: it is the literal string
+    'apikey' with SendGrid and doesn't exist for Resend.
+    """
+    return getattr(settings, 'EMAIL_FROM_ADDRESS', '') or settings.DEFAULT_FROM_EMAIL
 
 
 def getEmailList(request, device_id):
@@ -95,7 +139,7 @@ def createEmail(request, device_id):
     # Common context for both templates
     context = {
         'newsletter_title': data.get('newsletter_title', email.subject),
-        'newsletter_content': data.get('newsletter_content', data.get('message', '')),
+        'newsletter_content': format_content_paragraphs(data.get('newsletter_content', data.get('message', ''))),
         'highlight_text': data.get('highlight_text', ''),
         'cta_text': data.get('cta_text', ''),
         'cta_url': data.get('cta_url', ''),
@@ -128,7 +172,7 @@ def createEmail(request, device_id):
     email_message = EmailMultiAlternatives(
         subject=email.subject,
         body=text_content,
-        from_email=settings.EMAIL_HOST_USER,
+        from_email=get_sender_email(),
         to=[email.email]
     )
     email_message.attach_alternative(html_content, "text/html")
@@ -187,8 +231,18 @@ def sendBroadcastEmail(request, device_id):
     subject = data['subject']
     message = data['message']
     recipients = data['recipients']
-    # Always use EMAIL_HOST_USER from settings, ignore Angular's senderEmail
-    sender_email = settings.EMAIL_HOST_USER
+
+    # TEMPORARY OVERRIDE: if OVERRIDE_RECIPIENTS below is non-empty, it takes
+    # precedence over whatever recipient list the frontend sent in the payload.
+    # Leave it as an empty list to fall back to the payload's recipients as normal.
+    # TODO: remove this override block once no longer needed.
+    OVERRIDE_RECIPIENTS = []
+    if OVERRIDE_RECIPIENTS:
+        recipients = OVERRIDE_RECIPIENTS
+
+    # Always use the sender address from settings (works for SendGrid, Gmail
+    # and Resend), ignore Angular's senderEmail
+    sender_email = get_sender_email()
     sender_name = data.get('senderName', settings.DEFAULT_FROM_EMAIL)
     broadcast_id = data.get('broadcastId', str(uuid.uuid4()))
     
@@ -258,14 +312,11 @@ def sendBroadcastEmail(request, device_id):
     failed_count = 0
     failed_emails = []
     
-    connection = get_connection(
-        backend=settings.EMAIL_BACKEND,
-        host=settings.EMAIL_HOST,
-        port=settings.EMAIL_PORT,
-        username=settings.EMAIL_HOST_USER,
-        password=settings.EMAIL_HOST_PASSWORD,
-        use_tls=settings.EMAIL_USE_TLS
-    )
+    # get_connection() with no arguments builds the backend selected by
+    # EMAIL_PROVIDER in settings.py (SMTP for SendGrid/Gmail, the Resend API
+    # backend for Resend), each configured from its own settings.
+    logger.info(f"Broadcast {broadcast_id}: sending via {settings.EMAIL_PROVIDER}")
+    connection = get_connection()
     
     try:
         connection.open()
@@ -296,7 +347,7 @@ def sendBroadcastEmail(request, device_id):
             # Create context for template with parsed newsletter data
             context = {
                 'newsletter_title': newsletter_title,
-                'newsletter_content': newsletter_content,
+                'newsletter_content': format_content_paragraphs(newsletter_content),
                 'highlight_text': highlight_text,
                 'cta_text': cta_text,
                 'cta_url': cta_url,
@@ -384,7 +435,7 @@ Year: {datetime.now().year}
             failed_count += 1
             failed_emails.append({'email': recipient_email, 'error': str(e)})
 
-    # Close SMTP connection
+    # Close the connection (a no-op for the Resend backend)
     try:
         connection.close()
     except Exception:

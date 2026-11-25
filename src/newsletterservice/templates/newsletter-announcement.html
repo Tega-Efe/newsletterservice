@@ -1,100 +1,252 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
     <meta charset="UTF-8">
-    <title>Restless Society Newsletter</title>
-    <!-- Prevent iOS dark mode -->
-    <meta name="color-scheme" content="light only">
-    <meta name="supported-color-schemes" content="light">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
+    <meta name="x-apple-disable-message-reformatting">
+    <!-- Dark by design. Gmail's app force-inverts text colours in dark mode and cannot be opted out, so every text colour
+         here is mid-tone (readable whether or not it gets flipped) and every dark/flame surface is a background-image (never inverted). -->
+    <meta name="color-scheme" content="dark">
+    <meta name="supported-color-schemes" content="dark">
+    <title>{{ newsletter_title }} | Restless Society</title>
+    <!--[if mso]>
+    <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+    <![endif]-->
+    <!-- Web fonts: Apple Mail / iOS load these; Gmail falls back to the stacks below -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #0b0908 !important; }
+        body { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse; }
+        img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        a { color: #fc821f; }
+        a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+        u + .body a, #MessageViewBody a { color: inherit; text-decoration: none; }
+
+        /* The admin's text arrives as <p> tags with inline justify; force clean left-aligned copy */
+        .body-copy p { margin: 0 0 18px 0 !important; text-align: left !important; }
+        .body-copy p:last-child { margin-bottom: 0 !important; }
+        /* First paragraph becomes the "lede": bigger, brighter */
+        .body-copy p:first-child { font-size: 20px !important; line-height: 1.45 !important; color: #968773 !important; font-weight: 700 !important; }
+    </style>
 </head>
-<body style="margin:0;padding:0;background:#ffffff !important;color:#222;">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;">
+<body class="body" style="margin:0;padding:0;background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);">
+
+    <!-- Inbox preview text -->
+    <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:#0b0908;">
+        {{ newsletter_title }} &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);">
         <tr>
-            <td align="center">
-                <table width="640" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;border:8px solid; border-image: linear-gradient(90deg, rgba(252,130,31,0.5) 0%, rgba(255,170,85,0.5) 100%) 1; border-radius:0;overflow:hidden;">
+            <td align="center" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);">
+                <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0b0908" style="width:100%;max-width:600px;table-layout:fixed;background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);">
+
+                    <!-- ============ 1. MASTHEAD ============ -->
                     <tr>
-                        <td style="background:#ffffff !important;padding:0;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#ffffff !important;">
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:22px 24px 18px 24px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                                 <tr>
-                                    <td style="padding:18px 0 0 18px;" valign="top" width="90">
-                                        <a href="https://chat.whatsapp.com/ImBpjBZwx7zHrkmElfzIBH" target="_blank">
-                                            <img src="{{ qr_code_image }}" alt="QR Code" width="60" height="60" style="display:block;box-shadow:0 0 16px 8px #fff;">
-                                        
-                    <tr>
-                        <td style="background:#ffffff !important;padding:30px 25px;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0">
-                                <tr>
-                                    <td align="center" style="font-size:24px;font-weight:bold;color:#fc821f;font-family:Arial,sans-serif;background:#ffffff !important;">
-                                        <img src="{{ icon2_image }}" alt="Restless Society Icon" width="110" height="110" style="display:block;margin:0 auto;margin-bottom:5px;margin-top:-2rem;">
-                                        {{ newsletter_title }}
-                                        <div style="height:18px;"></div>
+                                    {% if icon2_image %}
+                                    <td width="56" valign="middle" style="width:56px;">
+                                        <img src="{{ icon2_image }}" alt="Restless Society" width="48" style="display:block;width:48px;height:auto;">
                                     </td>
-                                </tr>
-                                <tr>
-                                    <td style="font-size:16px;color:#222;font-family:Arial,sans-serif;padding-bottom:18px;font-weight:bold;text-align:center;background:#ffffff !important;">{{ newsletter_content }}
-                                        <div style="height:18px;"></div>
+                                    {% endif %}
+                                    <td valign="middle" align="right" style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.7;letter-spacing:3px;text-transform:uppercase;color:#fc821f;">
+                                        <span style="color:#fc821f;font-weight:bold;">Restless Society</span><br>
+                                        <span style="color:#877c6e;">Transmission &middot; {{ year }}</span>
                                     </td>
-                                </tr>
-                                <tr>
-                                    <td align="center" style="padding-bottom:28px;background:#ffffff !important;">
-                                        {% if flyer_images %}
-                                            {% for flyer_url in flyer_images %}
-                                                <img src="{{ flyer_url }}" alt="Flyer" style="display:block;margin:0 auto 18px auto;max-width:420px;width:100%;height:auto;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.10);">
-                                            {% endfor %}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% if highlight_text %}
-                                <tr>
-                                    <td style="background:linear-gradient(135deg,rgba(252,130,31,0.15) 0%,rgba(252,130,31,0.03) 100%);border-left:4px solid #fc821f;padding:18px 18px 18px 22px;margin:28px 0 18px 0;border-radius:0 12px 12px 0;box-shadow:0 6px 24px 0 rgba(252,130,31,0.25);font-size:15px;color:#222;font-weight:bold;font-family:Arial,sans-serif;text-align:justify;background:#fff !important;">{{ highlight_text }}</td>
-                                </tr>
-                                {% endif %}
-                                {% if cta_text and cta_url %}
-                                <tr>
-                                    <td align="center" style="padding:15px 0;background:#ffffff !important;">
-                                        <a href="{{ cta_url }}" style="display:inline-block;background:#fc821f;color:#fff;padding:12px 35px;border-radius:6px;font-weight:bold;font-size:15px;text-decoration:none;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;">{{ cta_text }}</a>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                            </table>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="background:#fff !important;padding:25px 20px;text-align:center;">
-                            <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="white" style="background:#fff !important;">
-                                <tr>
-                                    <td style="color:#fc821f;font-size:15px;font-weight:bold;font-family:Arial,sans-serif;padding-bottom:10px;">Visit our social accounts</td>
-                                </tr>
-                                <tr>
-                                    <td align="center" style="padding-bottom:10px;">
-                                        <a href="https://www.instagram.com/the.restless.society?igsh=MWR5ZTB4ajZ5cWZ2Ng%3D%3D&utm_source=qr" style="display:inline-block;margin:0 7px;">
-                                            <img src="{{ instagram_icon }}" alt="Instagram" width="40" height="40" style="display:inline-block;">
-                                        </a>
-                                        <a href="https://x.com/restlessociety?s=11" style="display:inline-block;margin:0 7px;">
-                                            <img src="{{ x_icon }}" alt="X" width="40" height="40" style="display:inline-block;">
-                                        </a>
-                                        <a href="https://www.tiktok.com/@restless.society?_r=1&_t=ZS-93cBFfyrScb" style="display:inline-block;margin:0 7px;">
-                                            <img src="{{ tiktok_icon }}" alt="TikTok" width="40" height="40" style="display:inline-block;">
-                                        </a>
-                                        <a href="https://chat.whatsapp.com/I1uaM1L6VyS0EtuBfNETuI" style="display:inline-block;margin:0 7px;">
-                                            <img src="{{ whatsapp_icon }}" alt="WhatsApp" width="40" height="40" style="display:inline-block;">
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="font-size:14px;color:#fc821f;font-style:italic;font-family:Arial,sans-serif;padding-bottom:8px;">"A gathering point for a shared rhythm."</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-size:13px;color:#222;font-family:Arial,sans-serif;font-weight:bold;padding-bottom:5px;">&copy; {{ year }} Restless Society. All rights reserved.</td>
-                                </tr>
-                                <tr>
-                                    <td style="font-size:12px;color:#fc821f;font-family:Arial,sans-serif;">Not interested? <a href="{{ unsubscribe_url }}" style="color:#fc821f;text-decoration:underline;font-weight:bold;">Unsubscribe</a></td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
+
+                    <!-- ============ 2. TICKER STRIP ============ -->
+                    <tr>
+                        <td bgcolor="#e8590c" style="background-color:#e8590c;background-image:linear-gradient(#e8590c,#e8590c);padding:0;">
+                            <div style="width:100%;overflow:hidden;white-space:nowrap;padding:9px 0;font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1;font-weight:bold;letter-spacing:3px;text-transform:uppercase;color:#0b0908;">
+                                &nbsp;After Dark // 4AM is a state of mind 
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- ============ 3. HERO TITLE ============ -->
+                    <tr>
+                        <td bgcolor="#0b0908" {% if background_header_image %}background="{{ background_header_image }}"{% endif %} style="background-color:#0b0908;{% if background_header_image %}background-image:url('{{ background_header_image }}');background-size:cover;background-position:center;{% else %}background-image:linear-gradient(#0b0908,#0b0908);{% endif %}padding:46px 24px 42px 24px;">
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.4;letter-spacing:4px;text-transform:uppercase;color:#fc821f;font-weight:bold;padding-bottom:16px;">
+                                &#9679;&nbsp; New transmission
+                            </div>
+                            <div style="font-family:'Anton','Bebas Neue',Haettenschweiler,'Arial Narrow Bold',Impact,'Arial Narrow',Arial,sans-serif;font-size:46px;line-height:1;font-weight:normal;letter-spacing:0.5px;text-transform:uppercase;color:#ff983d;text-shadow:3px 3px 0 rgba(150,25,8,0.9),0 0 34px rgba(252,130,31,0.45);word-wrap:break-word;word-break:break-word;">
+                                {{ newsletter_title }}
+                            </div>
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;">
+                                <tr>
+                                    <td width="72" height="5" bgcolor="#fc821f" style="width:72px;height:5px;line-height:5px;font-size:1px;background-color:#fc821f;background-image:linear-gradient(#fc821f,#fc821f);">&nbsp;</td>
+                                    <td width="10" style="width:10px;font-size:1px;">&nbsp;</td>
+                                    <td width="14" height="5" bgcolor="#ff4d1a" style="width:14px;height:5px;line-height:5px;font-size:1px;background-color:#ff4d1a;background-image:linear-gradient(#ff4d1a,#ff4d1a);">&nbsp;</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ============ 4. THE WORD (body copy) ============ -->
+                    <tr>
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:34px 24px 8px 24px;">
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.4;letter-spacing:4px;text-transform:uppercase;color:#877c6e;padding-bottom:18px;">
+                                // The word
+                            </div>
+                            <div class="body-copy" style="font-family:'Space Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.7;color:#968773;text-align:left;">
+                                {{ newsletter_content|safe }}
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- ============ 5. THE DROP (flyers) ============ -->
+                    {% if flyer_images %}
+                    <tr>
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:30px 24px 10px 24px;">
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.4;letter-spacing:4px;text-transform:uppercase;color:#fc821f;font-weight:bold;padding-bottom:16px;">
+                                // The drop
+                            </div>
+                            {% for flyer_url in flyer_images %}
+                            {% if flyer_images|length > 1 %}
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;line-height:1.4;letter-spacing:3px;text-transform:uppercase;color:#877c6e;padding-bottom:8px;">
+                                Flyer {{ forloop.counter|stringformat:"02d" }} / {{ flyer_images|length|stringformat:"02d" }}
+                            </div>
+                            {% endif %}
+                            <div style="padding-bottom:22px;">
+                                {% if cta_url %}<a href="{{ cta_url }}" target="_blank" style="text-decoration:none;">{% endif %}
+                                <img src="{{ flyer_url }}" alt="Flyer" width="552" style="display:block;width:100%;max-width:552px;height:auto;border-radius:6px;box-shadow:0 0 44px rgba(252,130,31,0.28);">
+                                {% if cta_url %}</a>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- ============ 6. SIGNAL BOOST (highlight) ============ -->
+                    {% if highlight_text %}
+                    <tr>
+                        <td bgcolor="#e8590c" style="background-color:#e8590c;background-image:linear-gradient(135deg,#e5470d 0%,#ee6a10 100%);padding:32px 24px 34px 24px;">
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.4;letter-spacing:4px;text-transform:uppercase;color:#0b0908;font-weight:bold;padding-bottom:14px;">
+                                &#9679;&nbsp; Don't sleep on this
+                            </div>
+                            <div style="font-family:'Anton','Bebas Neue',Haettenschweiler,'Arial Narrow Bold',Impact,'Arial Narrow',Arial,sans-serif;font-size:25px;line-height:1.22;font-weight:normal;letter-spacing:0.5px;text-transform:uppercase;color:#0b0908;text-align:left;">
+                                {{ highlight_text }}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- ============ 7. CALL TO ACTION ============ -->
+                    {% if cta_text and cta_url %}
+                    <tr>
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:34px 24px 6px 24px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td align="center" bgcolor="#e8590c" style="background-color:#e8590c;background-image:linear-gradient(135deg,#e5470d 0%,#ee6a10 100%);border-radius:4px;">
+                                        <a href="{{ cta_url }}" target="_blank" style="display:block;padding:20px 16px;font-family:'Anton','Bebas Neue',Haettenschweiler,'Arial Narrow Bold',Impact,'Arial Narrow',Arial,sans-serif;font-size:22px;line-height:1.1;letter-spacing:2px;text-transform:uppercase;color:#0b0908;text-decoration:none;">
+                                            {{ cta_text }} &nbsp;&rarr;
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- ============ 8. THE CIRCLE (QR / community) ============ -->
+                    {% if qr_code_image %}
+                    <tr>
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:36px 24px 10px 24px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#15110e" style="background-color:#15110e;background-image:linear-gradient(#15110e,#15110e);border-radius:10px;">
+                                <tr>
+                                    <td width="112" valign="middle" style="width:112px;padding:20px 0 20px 20px;">
+                                        <a href="https://chat.whatsapp.com/ImBpjBZwx7zHrkmElfzIBH" target="_blank" style="text-decoration:none;">
+                                            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                                <tr>
+                                                    <td bgcolor="#f6ead6" style="background-color:#f6ead6;background-image:linear-gradient(#f6ead6,#f6ead6);padding:7px;border-radius:6px;">
+                                                        <img src="{{ qr_code_image }}" alt="Scan to join the WhatsApp community" width="78" height="78" style="display:block;width:78px;height:78px;">
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </a>
+                                    </td>
+                                    <td valign="middle" style="padding:20px 20px 20px 18px;">
+                                        <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;line-height:1.4;letter-spacing:3px;text-transform:uppercase;color:#fc821f;font-weight:bold;padding-bottom:8px;">
+                                            // The circle
+                                        </div>
+                                        <div style="font-family:'Anton','Bebas Neue',Haettenschweiler,'Arial Narrow Bold',Impact,'Arial Narrow',Arial,sans-serif;font-size:24px;line-height:1.05;letter-spacing:0.5px;text-transform:uppercase;color:#ff983d;padding-bottom:8px;">
+                                            Scan. Join.<br>Stay restless.
+                                        </div>
+                                        <div style="font-family:'Space Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;color:#968773;">
+                                            Scan the code or tap it to enter the WhatsApp community.
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- ============ 9. FOLLOW THE SIGNAL (socials) ============ -->
+                    <tr>
+                        <td bgcolor="#0b0908" style="background-color:#0b0908;background-image:linear-gradient(#0b0908,#0b0908);padding:34px 24px 34px 24px;">
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.4;letter-spacing:4px;text-transform:uppercase;color:#877c6e;text-align:center;padding-bottom:18px;">
+                                // Follow the signal
+                            </div>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td width="25%" align="center" valign="top" style="width:25%;">
+                                        <a href="https://www.instagram.com/the.restless.society?igsh=MWR5ZTB4ajZ5cWZ2Ng%3D%3D&utm_source=qr" target="_blank" style="display:inline-block;width:52px;height:52px;line-height:52px;background-color:#f6ead6;background-image:linear-gradient(#f6ead6,#f6ead6);border-radius:26px;text-align:center;text-decoration:none;">
+                                            <img src="{{ instagram_icon }}" alt="Instagram" width="26" height="26" style="display:inline-block;width:26px;height:26px;vertical-align:middle;">
+                                        </a>
+                                        <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#968773;padding-top:8px;">IG</div>
+                                    </td>
+                                    <td width="25%" align="center" valign="top" style="width:25%;">
+                                        <a href="https://x.com/restlessociety?s=11" target="_blank" style="display:inline-block;width:52px;height:52px;line-height:52px;background-color:#f6ead6;background-image:linear-gradient(#f6ead6,#f6ead6);border-radius:26px;text-align:center;text-decoration:none;">
+                                            <img src="{{ x_icon }}" alt="X" width="26" height="26" style="display:inline-block;width:26px;height:26px;vertical-align:middle;">
+                                        </a>
+                                        <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#968773;padding-top:8px;">X</div>
+                                    </td>
+                                    <td width="25%" align="center" valign="top" style="width:25%;">
+                                        <a href="https://www.tiktok.com/@restless.society?_r=1&_t=ZS-93cBFfyrScb" target="_blank" style="display:inline-block;width:52px;height:52px;line-height:52px;background-color:#f6ead6;background-image:linear-gradient(#f6ead6,#f6ead6);border-radius:26px;text-align:center;text-decoration:none;">
+                                            <img src="{{ tiktok_icon }}" alt="TikTok" width="26" height="26" style="display:inline-block;width:26px;height:26px;vertical-align:middle;">
+                                        </a>
+                                        <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#968773;padding-top:8px;">TikTok</div>
+                                    </td>
+                                    <td width="25%" align="center" valign="top" style="width:25%;">
+                                        <a href="https://chat.whatsapp.com/I1uaM1L6VyS0EtuBfNETuI" target="_blank" style="display:inline-block;width:52px;height:52px;line-height:52px;background-color:#f6ead6;background-image:linear-gradient(#f6ead6,#f6ead6);border-radius:26px;text-align:center;text-decoration:none;">
+                                            <img src="{{ whatsapp_icon }}" alt="WhatsApp" width="26" height="26" style="display:inline-block;width:26px;height:26px;vertical-align:middle;">
+                                        </a>
+                                        <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#968773;padding-top:8px;">WhatsApp</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ============ 10. FOOTER ============ -->
+                    <tr>
+                        <td bgcolor="#0b0908" {% if background_footer_image %}background="{{ background_footer_image }}"{% endif %} style="background-color:#0b0908;{% if background_footer_image %}background-image:url('{{ background_footer_image }}');background-size:cover;background-position:center;{% else %}background-image:linear-gradient(#0b0908,#0b0908);{% endif %}padding:34px 24px 40px 24px;">
+                            {% if icon2_image %}
+                            <img src="{{ icon2_image }}" alt="Restless Society" width="96" style="display:block;width:96px;height:auto;margin-bottom:22px;">
+                            {% endif %}
+                            <div style="font-family:'Space Grotesk','Helvetica Neue',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.4;font-style:italic;color:#fc821f;padding-bottom:14px;">
+                                "A gathering of the restless."
+                            </div>
+                            <div style="font-family:'Space Mono','Courier New',Courier,monospace;font-size:11px;line-height:1.7;letter-spacing:1px;color:#877c6e;">
+                                &copy; {{ year }} Restless Society. All rights reserved.<br>
+                                Not interested? <a href="{{ unsubscribe_url }}" style="color:#fc821f;text-decoration:underline;font-weight:bold;">Unsubscribe</a>
+                            </div>
+                        </td>
+                    </tr>
+
                 </table>
+                <!--[if mso]></td></tr></table><![endif]-->
             </td>
         </tr>
     </table>

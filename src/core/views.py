@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.views.decorators.csrf import csrf_exempt
 from .utils import *
+from .firebase_auth import firebase_admin_required
 import logging
 
 # Create your views here.
@@ -90,6 +91,7 @@ def getRoutes(request):
     return Response(routes)
 
 @api_view(['GET', 'POST'])
+@firebase_admin_required
 def getEmails(request):
     device_id = request.headers.get('X-Device-ID')
     logger.info(f"getEmails called - Method: {request.method}, Device ID: {device_id}")
@@ -102,6 +104,7 @@ def getEmails(request):
         return createEmail(request, device_id)
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@firebase_admin_required
 def getEmail(request, pk):
     device_id = request.headers.get('X-Device-ID')
     if request.method == 'GET':
@@ -116,30 +119,43 @@ def getEmail(request, pk):
 
 @api_view(['POST'])
 @csrf_exempt
+@firebase_admin_required
 def broadcastEmail(request):
     """
     Broadcast endpoint matching Angular's data structure.
     Expects: { subject, message, recipients, senderEmail, senderName, broadcastId }
     """
     device_id = request.headers.get('X-Device-ID')
+    logger.info(f"Broadcast requested by admin uid={request.firebase_claims.get('uid')}")
     
-    # Print recipients array
-    recipients = request.data.get('recipients', [])
-    print("\n" + "=" * 80)
-    print(f"📧 RECIPIENTS ARRAY ({len(recipients)} emails):")
-    print("=" * 80)
-    for idx, email in enumerate(recipients, 1):
-        print(f"  {idx}. {email}")
-    print("=" * 80 + "\n")
-    
-    serializer = BroadcastSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response({'error': serializer.errors}, status=400)
-    
-    return sendBroadcastEmail(request, device_id)
+    try:
+        # Log only the COUNT, never the addresses. Printing every recipient
+        # dumped the whole mailing list into the server log (personal data),
+        # and large broadcasts were failing right around that loop.
+        recipients = request.data.get('recipients', [])
+        count = len(recipients) if isinstance(recipients, list) else 0
+        logger.info(f"Broadcast recipients: {count}")
+
+        serializer = BroadcastSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({'error': serializer.errors}, status=400)
+
+        return sendBroadcastEmail(request, device_id)
+
+    except Exception as exc:
+        # PythonAnywhere's log viewer truncates the long single-line traceback
+        # Django writes, hiding the real error. Log a SHORT line first so the
+        # exception type and message always survive, then the full traceback.
+        logger.error("Broadcast failed: %s: %s", type(exc).__name__, str(exc)[:300])
+        logger.exception("Broadcast traceback")
+        return Response({
+            'status': 'error',
+            'message': f'Broadcast failed: {type(exc).__name__}: {str(exc)[:300]}',
+        }, status=500)
 
 
 @api_view(['GET', 'POST'])
+@firebase_admin_required
 def subscribers(request):
     """
     Handle subscriber list retrieval and creation
@@ -156,6 +172,7 @@ def subscribers(request):
 
 
 @api_view(['GET', 'PUT', 'DELETE'])
+@firebase_admin_required
 def subscriberDetail(request, pk):
     """
     Handle individual subscriber operations

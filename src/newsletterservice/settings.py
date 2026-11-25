@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Load environment variables from .env file
 load_dotenv()
@@ -30,7 +31,7 @@ SECRET_KEY = 'django-insecure-drih5ul)03h%b6wtmzhtn)w3px_zeh$bls3cb5x#)y!ozgu&)z
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.20.10.4','192.168.0.100' ,'newsletterservice.pythonanywhere.com' ]
+ALLOWED_HOSTS = ['localhost','127.0.0.1','10.11.196.109','172.16.16.118','172.20.10.4','192.168.0.100' ,'newsletterservice.pythonanywhere.com' ]
 
 
 
@@ -122,25 +123,92 @@ USE_I18N = True
 
 USE_TZ = True
 
-# New SendGrid config:
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.sendgrid.net'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'apikey'  # This is literal - SendGrid always uses 'apikey' as the username
-EMAIL_HOST_PASSWORD = os.getenv('SENDGRID_API_KEY', '')  # Store your API key in .env
-DEFAULT_FROM_EMAIL = 'info@restlesssociety.xyz'
-# Make the SendGrid API key available in settings (used by SendGrid client)
-SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
 
-#the email settings
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True 
-# DEFAULT_FROM_EMAIL = "newsletterservice"
-# EMAIL_HOST_USER = "therestlesssociety1@gmail.com"
-# EMAIL_HOST_PASSWORD = "kslnyrfflqsvdwpt"
+# ---------------------------------------------------------------------------
+# Email provider
+# ---------------------------------------------------------------------------
+# Pick ONE provider with the EMAIL_PROVIDER variable in .env:
+#
+#   EMAIL_PROVIDER=sendgrid   (default - the previous behaviour)
+#   EMAIL_PROVIDER=gmail
+#   EMAIL_PROVIDER=resend
+#
+# Each provider only needs its own credentials to be present in .env:
+#   sendgrid -> SENDGRID_API_KEY  (optional: SENDGRID_FROM_EMAIL)
+#   gmail    -> GMAIL_HOST_USER, GMAIL_APP_PASSWORD
+#   resend   -> RESEND_API_KEY    (optional: RESEND_FROM_EMAIL)
+#
+# The rest of the code never needs to know which one is active: it sends
+# through Django's email API, and these settings decide where it goes.
+EMAIL_PROVIDER = os.getenv('EMAIL_PROVIDER', 'sendgrid').strip().lower()
+
+_SUPPORTED_EMAIL_PROVIDERS = ('sendgrid', 'gmail', 'resend')
+if EMAIL_PROVIDER not in _SUPPORTED_EMAIL_PROVIDERS:
+    raise ImproperlyConfigured(
+        f"EMAIL_PROVIDER={EMAIL_PROVIDER!r} is not valid. "
+        f"Use one of: {', '.join(_SUPPORTED_EMAIL_PROVIDERS)}."
+    )
+
+# API keys are always read so they are available to any code that needs them.
+SENDGRID_API_KEY = os.getenv('SENDGRID_API_KEY', '')
+RESEND_API_KEY = os.getenv('RESEND_API_KEY', '')
+
+# Resend's default limit is 2 requests/second. The Resend backend spaces
+# sends at least this many seconds apart (and retries on HTTP 429). Lower it
+# only if Resend has raised the rate limit on your team.
+RESEND_MIN_SEND_INTERVAL = float(os.getenv('RESEND_MIN_SEND_INTERVAL', '0.55'))
+
+if EMAIL_PROVIDER == 'sendgrid':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.sendgrid.net'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = 'apikey'  # Literal - SendGrid always uses 'apikey' as the SMTP username
+    EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
+    EMAIL_FROM_ADDRESS = os.getenv('SENDGRID_FROM_EMAIL', 'info@restlesssociety.xyz')
+
+elif EMAIL_PROVIDER == 'gmail':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = os.getenv('GMAIL_HOST_USER', 'therestlesssociety1@gmail.com')
+    EMAIL_HOST_PASSWORD = os.getenv('GMAIL_APP_PASSWORD', '')  # Gmail app password, kept in .env
+    EMAIL_FROM_ADDRESS = EMAIL_HOST_USER
+
+elif EMAIL_PROVIDER == 'resend':
+    # Custom backend in core/email_backends.py that talks to the Resend API,
+    # so no SMTP host/port/credentials are needed.
+    EMAIL_BACKEND = 'core.email_backends.ResendEmailBackend'
+    # The sending address must belong to a domain verified in Resend.
+    EMAIL_FROM_ADDRESS = os.getenv('RESEND_FROM_EMAIL', 'info@restlesssociety.xyz')
+
+# The bare "from" address used for every outgoing email, whichever provider
+# is active. (EMAIL_HOST_USER can't be used for this: for SendGrid it is the
+# literal string 'apikey', and Resend has no SMTP user at all.)
+DEFAULT_FROM_EMAIL = EMAIL_FROM_ADDRESS
+
+# ---------------------------------------------------------------------------
+# Firebase ID-token verification (see core/firebase_auth.py)
+# ---------------------------------------------------------------------------
+# Privileged endpoints require `Authorization: Bearer <Firebase ID token>`
+# from an admin who signed in with two-step verification.
+FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', 'restless-society')
+
+# Optional path to a Firebase service-account JSON key (keep it OUTSIDE the
+# repo and out of any public folder). When set, tokens are also checked for
+# revocation and disabled users, at the cost of one extra call to Google per
+# request. Without it, tokens are still fully verified (signature, expiry,
+# audience, admin + 2FA claims), but a revoked admin keeps access until their
+# token expires (up to 1 hour).
+FIREBASE_CREDENTIALS_FILE = os.getenv('FIREBASE_CREDENTIALS_FILE', '')
+FIREBASE_CHECK_REVOKED = (
+    os.getenv('FIREBASE_CHECK_REVOKED', 'true' if FIREBASE_CREDENTIALS_FILE else 'false')
+    .strip().lower() in ('1', 'true', 'yes')
+)
+
+# Must match the Firestore/Storage rules, which also demand a 2FA sign-in.
+FIREBASE_REQUIRE_MFA = os.getenv('FIREBASE_REQUIRE_MFA', 'true').strip().lower() in ('1', 'true', 'yes')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
