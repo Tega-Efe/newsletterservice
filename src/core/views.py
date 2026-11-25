@@ -1,6 +1,5 @@
 from django.shortcuts import render
-from .serializers import EmailSerializer, BroadcastSerializer
-from .models import Emails
+from .serializers import BroadcastSerializer
 from django.core.mail import send_mail, EmailMultiAlternatives
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -16,105 +15,33 @@ logger = logging.getLogger(__name__)
 def getRoutes(request):
     routes = [
         {
-            'Endpoint': '/emails/',
-            'method': 'GET',
-            'body': None,
-            'description': 'Returns an array of emails'
-        },
-        {
             'Endpoint': '/test-post',
             'method': 'POST',
             'body': {'test': 'data'},
             'description': 'Test endpoint for POST requests'
         },
         {
-            'Endpoint': '/emails/id',
-            'method': 'GET',
-            'body': None,
-            'description': 'Returns a single email object'
-        },
-        {
             'Endpoint': '/emails/create/',
             'method': 'POST',
             'body': {'subject': "", 'message': "", 'email': ""},
-            'description': 'Creates a new email with data sent in post request'
-        },
-        {
-            'Endpoint': '/emails/id/update/',
-            'method': 'PUT',
-            'body': {'subject': "", 'message': "", 'email': ""},
-            'description': 'Updates an existing email with data sent in put request'
-        },
-        {
-            'Endpoint': '/emails/id/delete/',
-            'method': 'DELETE',
-            'body': None,
-            'description': 'Deletes an existing email'
+            'description': 'Sends a single newsletter email (not persisted to a DB; subscriber data lives in Firestore)'
         },
         {
             'Endpoint': '/broadcast/send',
             'method': 'POST',
             'body': {'subject': "", 'message': "", 'recipients': [], 'senderEmail': "", 'senderName': "", 'broadcastId': ""},
-            'description': 'Sends broadcast emails to multiple recipients and auto-saves them as subscribers'
+            'description': 'Sends broadcast emails to multiple recipients'
         },
-        {
-            'Endpoint': '/subscribers/',
-            'method': 'GET',
-            'body': None,
-            'description': 'Returns list of all active subscribers'
-        },
-        {
-            'Endpoint': '/subscribers/',
-            'method': 'POST',
-            'body': {'email': "", 'name': ""},
-            'description': 'Creates a new subscriber or reactivates an existing one'
-        },
-        {
-            'Endpoint': '/subscribers/id/',
-            'method': 'GET',
-            'body': None,
-            'description': 'Returns a single subscriber'
-        },
-        {
-            'Endpoint': '/subscribers/id/',
-            'method': 'PUT',
-            'body': {'email': "", 'name': "", 'is_active': True},
-            'description': 'Updates an existing subscriber'
-        },
-        {
-            'Endpoint': '/subscribers/id/',
-            'method': 'DELETE',
-            'body': None,
-            'description': 'Deactivates a subscriber (soft delete)'
-        }
     ]
     return Response(routes)
 
-@api_view(['GET', 'POST'])
+
+@api_view(['POST'])
 @firebase_admin_required
 def getEmails(request):
     device_id = request.headers.get('X-Device-ID')
-    logger.info(f"getEmails called - Method: {request.method}, Device ID: {device_id}")
-    
-    if request.method == 'GET':
-        return getEmailList(request, device_id)
-
-    if request.method == 'POST':
-        logger.info(f"Creating email - Data: {request.data}")
-        return createEmail(request, device_id)
-
-@api_view(['GET', 'PUT', 'DELETE'])
-@firebase_admin_required
-def getEmail(request, pk):
-    device_id = request.headers.get('X-Device-ID')
-    if request.method == 'GET':
-        return getEmailDetail(request, pk, device_id)
-
-    if request.method == 'PUT':
-        return updateEmail(request, pk, device_id)
-
-    if request.method == 'DELETE':
-        return deleteEmail(request, pk, device_id)
+    logger.info(f"Creating email - Data: {request.data}")
+    return createEmail(request, device_id)
 
 
 @api_view(['POST'])
@@ -127,7 +54,7 @@ def broadcastEmail(request):
     """
     device_id = request.headers.get('X-Device-ID')
     logger.info(f"Broadcast requested by admin uid={request.firebase_claims.get('uid')}")
-    
+
     try:
         # Log only the COUNT, never the addresses. Printing every recipient
         # dumped the whole mailing list into the server log (personal data),
@@ -152,41 +79,3 @@ def broadcastEmail(request):
             'status': 'error',
             'message': f'Broadcast failed: {type(exc).__name__}: {str(exc)[:300]}',
         }, status=500)
-
-
-@api_view(['GET', 'POST'])
-@firebase_admin_required
-def subscribers(request):
-    """
-    Handle subscriber list retrieval and creation
-    """
-    device_id = request.headers.get('X-Device-ID')
-    logger.info(f"Subscribers endpoint - Method: {request.method}, Device ID: {device_id}")
-    
-    if request.method == 'GET':
-        return getSubscriberList(request, device_id)
-    
-    if request.method == 'POST':
-        logger.info(f"Creating subscriber: {request.data.get('email')}")
-        return createSubscriber(request, device_id)
-
-
-@api_view(['GET', 'PUT', 'DELETE'])
-@firebase_admin_required
-def subscriberDetail(request, pk):
-    """
-    Handle individual subscriber operations
-    """
-    device_id = request.headers.get('X-Device-ID')
-    logger.info(f"Subscriber detail - Method: {request.method}, ID: {pk}, Device ID: {device_id}")
-    
-    if request.method == 'GET':
-        return getSubscriberDetail(request, pk, device_id)
-    
-    if request.method == 'PUT':
-        logger.info(f"Updating subscriber {pk}: {request.data}")
-        return updateSubscriber(request, pk, device_id)
-    
-    if request.method == 'DELETE':
-        logger.info(f"Deleting/deactivating subscriber {pk}")
-        return deleteSubscriber(request, pk, device_id)

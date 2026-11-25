@@ -1,6 +1,4 @@
 from rest_framework.response import Response
-from .models import Emails, Subscriber, BroadcastLog
-from .serializers import EmailSerializer, SubscriberSerializer, BroadcastLogSerializer
 from django.core.mail import send_mail, EmailMultiAlternatives, get_connection
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -160,26 +158,6 @@ def get_sender_email() -> str:
     return getattr(settings, 'EMAIL_FROM_ADDRESS', '') or settings.DEFAULT_FROM_EMAIL
 
 
-def getEmailList(request, device_id):
-    if device_id:
-        emails = Emails.objects.filter(device_id=device_id).order_by('-edited_at')
-    else:
-        emails = Emails.objects.all().order_by('-edited_at')
-    serializer = EmailSerializer(emails, many=True)
-    return Response(serializer.data)
-
-def getEmailDetail(request, pk, device_id):
-    try:
-        if device_id:
-            email = Emails.objects.get(id=pk, device_id=device_id)
-        else:
-            email = Emails.objects.get(id=pk)
-    except Emails.DoesNotExist:
-        return Response(status=404)
-    serializer = EmailSerializer(email, many=False)
-    return Response(serializer.data)
-
-
 def createEmail(request, device_id):
     # Flyer images: expect URLs from request
     flyer_images = request.data.get('flyer_images', [])
@@ -188,33 +166,33 @@ def createEmail(request, device_id):
     Supports two types:
     1. Newsletter Announcement - General announcements, updates, news
     2. Newsletter Event - Event-specific notifications with event details
+
+    NOTE: this no longer persists a record to the Django DB. Subscriber/email
+    history lives in Firestore instead, so this just sends the email and
+    echoes back what was sent.
     """
     data = request.data
 
     # Validate required fields
     if 'email' not in data:
         return Response({'error': 'Email field is missing in the request data.'}, status=400)
-    
+
     if 'subject' not in data:
         return Response({'error': 'Subject field is missing in the request data.'}, status=400)
 
     # Get newsletter type (announcement or event)
     newsletter_type = data.get('newsletter_type', 'announcement')  # Default to announcement
-    
-    # Create email record
-    email = Emails.objects.create(
-        subject=data['subject'],
-        message=data.get('message', ''),
-        email=data['email'],
-        device_id=device_id
-    )
+
+    subject = data['subject']
+    recipient_email = data['email']
+    message = data.get('message', '')
 
     # Determine which template to use based on newsletter type
     if newsletter_type == 'event':
         template_name = 'newsletter-event.html'
     else:
         template_name = 'newsletter-announcement.html'
-    
+
     # Load image URLs from settings (prefer NEWSLETTER_IMAGES dict)
     icon2_url = _get_image_url('icon2')
     qr_code_url = _get_image_url('qr_code')
@@ -224,11 +202,11 @@ def createEmail(request, device_id):
     whatsapp_icon_url = _get_image_url('whatsapp')
 
     # Raw text as typed by the admin (used for the HTML and plain-text parts)
-    raw_content = data.get('newsletter_content', data.get('message', ''))
+    raw_content = data.get('newsletter_content', message)
 
     # Common context for both templates
     context = {
-        'newsletter_title': data.get('newsletter_title', email.subject),
+        'newsletter_title': data.get('newsletter_title', subject),
         'newsletter_content': format_content_paragraphs(raw_content),
         'highlight_text': data.get('highlight_text', ''),
         'cta_text': data.get('cta_text', ''),
@@ -280,45 +258,23 @@ def createEmail(request, device_id):
 
     # Send the email
     email_message = EmailMultiAlternatives(
-        subject=email.subject,
+        subject=subject,
         body=text_content,
         from_email=get_sender_email(),
-        to=[email.email],
+        to=[recipient_email],
         # Lets Gmail/Outlook show their own Unsubscribe button (see broadcast).
         headers={'List-Unsubscribe': f'<{unsubscribe_url}>'} if has_unsubscribe else None,
     )
     email_message.attach_alternative(html_content, "text/html")
     email_message.send()
 
-    serializer = EmailSerializer(email, many=False)
-    return Response(serializer.data)
-
-def updateEmail(request, pk, device_id):
-    data = request.data
-    try:
-        if device_id:
-            email = Emails.objects.get(id=pk, device_id=device_id)
-        else:
-            email = Emails.objects.get(id=pk)
-    except Emails.DoesNotExist:
-        return Response(status=404)
-    email.message = data.get('message', email.message)
-    if 'subject' in data:
-        email.subject = data['subject']
-    email.save()
-    serializer = EmailSerializer(email, many=False)
-    return Response(serializer.data)
-
-def deleteEmail(request, pk, device_id):
-    try:
-        if device_id:
-            email = Emails.objects.get(id=pk, device_id=device_id)
-        else:
-            email = Emails.objects.get(id=pk)
-    except Emails.DoesNotExist:
-        return Response(status=404)
-    email.delete()
-    return Response('Email was deleted!')
+    # Echo back what was sent instead of serializing a saved DB record.
+    return Response({
+        'subject': subject,
+        'message': message,
+        'email': recipient_email,
+        'device_id': device_id,
+    })
 
 
 # Broadcast email functions
@@ -326,16 +282,20 @@ def sendBroadcastEmail(request, device_id):
     """
     Send broadcast emails to multiple recipients at once.
     Expects: { subject, message, recipients, senderEmail, senderName, broadcastId }
+
+    NOTE: this no longer writes Subscriber / BroadcastLog / Emails rows to the
+    Django DB. Subscriber bookkeeping lives in Firestore instead, so this
+    function only sends mail and reports counts in the response.
     """
     data = request.data
 
     # Validate required fields
     if 'subject' not in data:
         return Response({'error': 'Subject field is required'}, status=400)
-    
+
     if 'message' not in data:
         return Response({'error': 'Message field is required'}, status=400)
-    
+
     if 'recipients' not in data or not isinstance(data['recipients'], list) or len(data['recipients']) == 0:
         return Response({'error': 'Recipients list is required and must contain at least one email'}, status=400)
 
@@ -357,12 +317,8 @@ def sendBroadcastEmail(request, device_id):
     sender_email = get_sender_email()
     sender_name = data.get('senderName', settings.DEFAULT_FROM_EMAIL)
     broadcast_id = data.get('broadcastId', str(uuid.uuid4()))
-    
-    # Parse the message JSON to extract newsletter data
-    # Initialize counters for subscriber creation/reactivation
-    new_subscribers = 0
-    updated_subscribers = 0
 
+    # Parse the message JSON to extract newsletter data
     try:
         newsletter_data = json.loads(message)
         template_type = newsletter_data.get('template', 'announcement')
@@ -387,54 +343,20 @@ def sendBroadcastEmail(request, device_id):
         event_location = ''
         flyer_images = []
 
-    # Auto-save/update subscribers from recipients list (works for both branches)
-    for recipient_email in recipients:
-        try:
-            subscriber, created = Subscriber.objects.get_or_create(
-                email=recipient_email,
-                defaults={
-                    'device_id': device_id,
-                    'is_active': True
-                }
-            )
-            if created:
-                new_subscribers += 1
-            elif not subscriber.is_active:
-                subscriber.is_active = True
-                subscriber.device_id = device_id
-                subscriber.save()
-                updated_subscribers += 1
-        except Exception:
-            pass
-
-    # Create broadcast log
-    broadcast_log = BroadcastLog.objects.create(
-        device_id=device_id,
-        broadcast_id=broadcast_id,
-        subject=subject,
-        message=message,
-        sender_email=sender_email,
-        sender_name=sender_name,
-        recipients_count=len(recipients),
-        status='pending'
-    )
-
     # Send emails using a single connection
     sent_count = 0
     failed_count = 0
     failed_emails = []
-    
+
     # get_connection() with no arguments builds the backend selected by
     # EMAIL_PROVIDER in settings.py (SMTP for SendGrid/Gmail, the Resend API
     # backend for Resend), each configured from its own settings.
     logger.info(f"Broadcast {broadcast_id}: sending via {settings.EMAIL_PROVIDER}")
     connection = get_connection()
-    
+
     try:
         connection.open()
     except Exception as conn_error:
-        broadcast_log.status = 'failed'
-        broadcast_log.save()
         return Response({
             'status': 'error',
             'message': f'Failed to connect to email server: {str(conn_error)}'
@@ -568,30 +490,12 @@ Not interested? Unsubscribe: {unsubscribe_url}
     except Exception:
         pass
 
-    # Save broadcast email once
-    if sent_count > 0:
-        try:
-            Emails.objects.create(
-                device_id=device_id,
-                subject=subject,
-                message=message[:500],
-                email=sender_email
-            )
-        except Exception:
-            pass
-
-    # Update broadcast log
-    broadcast_log.sent_count = sent_count
-    broadcast_log.failed_count = failed_count
-    
     if failed_count == 0:
-        broadcast_log.status = 'sent'
+        status = 'sent'
     elif sent_count == 0:
-        broadcast_log.status = 'failed'
+        status = 'failed'
     else:
-        broadcast_log.status = 'partial'
-    
-    broadcast_log.save()
+        status = 'partial'
 
     # Prepare response
     response_data = {
@@ -600,138 +504,10 @@ Not interested? Unsubscribe: {unsubscribe_url}
         'recipients_count': len(recipients),
         'sent_count': sent_count,
         'failed_count': failed_count,
-        'status': broadcast_log.status,
-        'subscribers_added': new_subscribers,
-        'subscribers_reactivated': updated_subscribers
+        'status': status,
     }
 
     if failed_emails:
         response_data['failed_emails'] = failed_emails
 
     return Response(response_data, status=200 if sent_count > 0 else 500)
-
-
-# Subscriber functions
-def getSubscriberList(request, device_id):
-    """Get all subscribers"""
-    if device_id:
-        subscribers = Subscriber.objects.filter(device_id=device_id, is_active=True)
-    else:
-        subscribers = Subscriber.objects.filter(is_active=True)
-    
-    serializer = SubscriberSerializer(subscribers, many=True)
-    return Response(serializer.data)
-
-
-def createSubscriber(request, device_id):
-    """Create a new subscriber or reactivate existing one"""
-    data = request.data
-    logger.info(f"Creating subscriber: {data.get('email')}")
-
-    if 'email' not in data:
-        logger.error("Subscriber creation failed: Email field missing")
-        return Response({'error': 'Email field is required'}, status=400)
-
-    # Use get_or_create to ensure only one record per email
-    try:
-        subscriber, created = Subscriber.objects.get_or_create(
-            email=data['email'],
-            defaults={
-                'device_id': device_id,
-                'is_active': True
-            }
-        )
-        
-        if created:
-            logger.info(f"New subscriber created: {data['email']} (ID: {subscriber.id})")
-            serializer = SubscriberSerializer(subscriber)
-            return Response(serializer.data, status=201)
-        else:
-            # Subscriber already exists
-            if not subscriber.is_active:
-                # Reactivate inactive subscriber
-                logger.info(f"Reactivating subscriber: {data['email']}")
-                subscriber.is_active = True
-                subscriber.device_id = device_id
-                subscriber.save()
-                serializer = SubscriberSerializer(subscriber)
-                logger.info(f"Subscriber reactivated successfully: {data['email']}")
-                return Response(serializer.data, status=200)
-            else:
-                # Already active
-                logger.warning(f"Subscriber already exists and is active: {data['email']}")
-                serializer = SubscriberSerializer(subscriber)
-                return Response(serializer.data, status=200)  # Return existing subscriber
-                
-    except Exception as e:
-        logger.error(f"Error creating/updating subscriber: {str(e)}")
-        return Response({'error': 'Failed to process subscriber'}, status=500)
-
-
-def getSubscriberDetail(request, pk, device_id):
-    """Get a specific subscriber"""
-    try:
-        if device_id:
-            subscriber = Subscriber.objects.get(id=pk, device_id=device_id)
-        else:
-            subscriber = Subscriber.objects.get(id=pk)
-    except Subscriber.DoesNotExist:
-        return Response({'error': 'Subscriber not found'}, status=404)
-    
-    serializer = SubscriberSerializer(subscriber)
-    return Response(serializer.data)
-
-
-def updateSubscriber(request, pk, device_id):
-    """Update a subscriber"""
-    try:
-        if device_id:
-            subscriber = Subscriber.objects.get(id=pk, device_id=device_id)
-        else:
-            subscriber = Subscriber.objects.get(id=pk)
-    except Subscriber.DoesNotExist:
-        return Response({'error': 'Subscriber not found'}, status=404)
-
-    data = request.data
-    subscriber.email = data.get('email', subscriber.email)
-    subscriber.is_active = data.get('is_active', subscriber.is_active)
-    subscriber.save()
-
-    serializer = SubscriberSerializer(subscriber)
-    return Response(serializer.data)
-
-
-def deleteSubscriber(request, pk, device_id):
-    """Delete (deactivate) a subscriber by ID or email"""
-    logger.info(f"Attempting to delete/deactivate subscriber: {pk}")
-    logger.info(f"Device ID filter: {device_id}")
-    
-    try:
-        # Try to find by email first (if pk contains @)
-        if '@' in str(pk):
-            logger.info(f"Searching for subscriber by email: {pk}")
-            # Don't filter by device_id for deletion - allow deleting any subscriber with matching email
-            subscriber = Subscriber.objects.get(email=pk)
-            logger.info(f"Found subscriber: {subscriber.email} (ID: {subscriber.id}, Device: {subscriber.device_id})")
-        else:
-            # Otherwise, treat as ID
-            logger.info(f"Searching for subscriber by ID: {pk}")
-            if device_id:
-                subscriber = Subscriber.objects.get(id=pk, device_id=device_id)
-            else:
-                subscriber = Subscriber.objects.get(id=pk)
-    except Subscriber.DoesNotExist:
-        logger.error(f"Subscriber not found: {pk}")
-        # Log all subscribers for debugging
-        all_subscribers = Subscriber.objects.all()
-        logger.debug(f"Total subscribers in database: {all_subscribers.count()}")
-        for sub in all_subscribers[:5]:  # Show first 5
-            logger.debug(f"  - {sub.email} (ID: {sub.id}, Active: {sub.is_active}, Device: {sub.device_id})")
-        return Response({'error': 'Subscriber not found'}, status=404)
-    
-    # Soft delete by setting is_active to False
-    subscriber.is_active = False
-    subscriber.save()
-    logger.info(f"Subscriber deactivated successfully: {subscriber.email} (ID: {subscriber.id})")
-    
-    return Response({'message': 'Subscriber deactivated successfully'})
